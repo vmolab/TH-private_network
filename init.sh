@@ -1,11 +1,13 @@
+#!/bin/bash
 # init.sh
 
 # random chain id
 CHAIN_ID=81231
 
 # random account which initially holds 100,000,000,000 ether
-MASTER_ADDRESS=0xD04136b9F4984a0e8Ffd682d22f1a29A03F19c41
-MASTER_PRIVATE_KEY=0xfb559405a8d302f7c9e12877fb73277cb0616548935082e91436127e30d73035
+# MASTER_ADDRESS=0xD04136b9F4984a0e8Ffd682d22f1a29A03F19c41
+# MASTER_PRIVATE_KEY=0xfb559405a8d302f7c9e12877fb73277cb0616548935082e91436127e30d73035
+COIN_BASE=0xc4422d1C18E9Ead8A9bB98Eb0d8bB9dbdf2811D7
 
 mkdir -p eth_private_network
 cd eth_private_network
@@ -24,7 +26,8 @@ done
 
 # londonBlock for EIP-1559
 cat > genesis.json <<EOF
-{
+{ 
+  "nonce": "0x0000000000000042",
   "config": {
     "chainId": $CHAIN_ID,
     "homesteadBlock": 0,
@@ -41,9 +44,12 @@ cat > genesis.json <<EOF
     "ethash": {}
   },
   "difficulty": "1",
+  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "extraData": "",
   "gasLimit": "21000000",
+  "gasLimit": "0xffffffff",
   "alloc": {
-    "$MASTER_ADDRESS": {
+    "$COIN_BASE": {
       "balance": "1000000000000000000000000000"
     }
   }
@@ -52,22 +58,20 @@ EOF
 
 # password to create the account and unlock it
 cat > password.txt <<EOF
-1234567890
-1234567890
+1234
+1234
 EOF
 
 # clone go-ethereum repo
 if [ -d go-ethereum ]; then
     echo "go-ethereum directory already exists, skipping clone"
 else
-    git clone https://github.com/ethereum/go-ethereum.git
+    git clone https://github.com/3e91b5/impt_go-ethereum.git go-ethereum
 fi
 
 cd go-ethereum
 
-# 1.10.26 (before the PoW to PoS transition)
-# TODO: adopting Trie-Hashimoto
-git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
+# git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
 
 # using Dockerfile in the go-ethereum repo
 if [ $(docker images -q geth:1.10.26 2> /dev/null) ]; then
@@ -130,7 +134,7 @@ EOF
     for j in $(seq 1 $1)
     do
         # skip the current node
-        if [[ $i != $j ]]; then
+        if [[ $i -ne $j ]]; then
             COUNT=$((COUNT + 1))
             ENODE=$(cat data/node$j/enode.txt)
 
@@ -169,12 +173,14 @@ EOF
         --nodiscover \
         --mine \
         --miner.threads 1 \
-        --http \
-        --http.addr 0.0.0.0 \
-        --http.vhosts "*" \
+        --rpc \
+        --rpccorsdomain "*" \
+        --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" \
         --ws \
-        --ws.addr 0.0.0.0 \
-        --ws.origins "*" \
+        --wsaddr 0.0.0.0 \
+        --wsorigins "*" \
+        --allow-insecure-unlock \
+        --impt \
         > /dev/null 2>&1
     echo "Node $i started"
 done
