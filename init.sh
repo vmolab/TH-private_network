@@ -74,11 +74,11 @@ cd go-ethereum
 # git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
 
 # using Dockerfile in the go-ethereum repo
-if [ $(docker images -q geth:1.10.26 2> /dev/null) ]; then
+if [ $(docker images -q geth:impt 2> /dev/null) ]; then
     echo "Image already exists, skipping build"
 else
     echo "Building geth image"
-    docker build . -t geth:1.10.26
+    docker build . -t geth:impt
 fi
 
 cd ..
@@ -97,7 +97,7 @@ do
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
         -v $(pwd)/password.txt:/root/password.txt \
-        geth:1.10.26 \
+        geth:impt \
         account new \
         --password /root/password.txt \
         --datadir /root/.ethereum > /dev/null 2>&1
@@ -107,7 +107,7 @@ do
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
         -v $(pwd)/password.txt:/root/password.txt \
-        geth:1.10.26 \
+        geth:impt \
         init --datadir /root/.ethereum \
         "/root/genesis.json" > /dev/null 2>&1
 
@@ -116,7 +116,7 @@ do
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
         -v $(pwd)/password.txt:/root/password.txt \
-        geth:1.10.26 \
+        geth:impt \
         --verbosity 0 \
         console --exec admin.nodeInfo.enode | awk -F "@" '{printf $1}' > data/node$i/enode.txt
         echo -n "@10.10.10.1${i}:30303\"" >> data/node$i/enode.txt
@@ -167,7 +167,7 @@ EOF
         -p 551$i:8551 \
         -p 545$i:8545 \
         -p 546$i:8546 \
-        geth:1.10.26 \
+        geth:impt \
         --syncmode full \
         --networkid $CHAIN_ID \
         --nodiscover \
