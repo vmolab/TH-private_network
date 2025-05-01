@@ -7,7 +7,7 @@ from datetime import datetime
 from multiprocessing import Pool
 
 # Settings
-FULL_PORT = "8545"
+FULL_PORT = "8081"
 PASSWORD = "1234"
 
 # multiprocessing to send transactions
@@ -19,7 +19,6 @@ MAX_ADDRESS = 100000000              # set max address to set the receiver addre
 INCREMENTAL_SEND_AMOUNT = True       # set send amount: incremental vs same (1 wei)
 
 # providers
-# fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 
 # functions
