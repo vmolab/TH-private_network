@@ -165,7 +165,7 @@ EOF
         -v $(pwd)/password.txt:/root/password.txt \
         -p 3030$i:30303 \
         -p 551$i:8551 \
-        -p 545$i:8545 \
+        -p 880$i:880$i \
         -p 546$i:8546 \
         geth:impt \
         --syncmode full \
@@ -175,6 +175,8 @@ EOF
         --miner.threads 1 \
         --rpc \
         --rpccorsdomain "*" \
+        --rpcport 880$i \
+        --rpcaddr 0.0.0.0 \
         --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" \
         --ws \
         --wsaddr 0.0.0.0 \
