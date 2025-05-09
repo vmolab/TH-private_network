@@ -21,6 +21,8 @@ import time
 from datetime import datetime
 import os
 from multiprocessing import Pool
+import sys, argparse
+import random as rand
 
 # Configuration --------------------------------------------------------------
 FULL_PORT = "8801"
@@ -29,7 +31,15 @@ THREAD_COUNT = 1
 BLOCK_INTERVAL = 10  # seconds
 
 # Web3 provider --------------------------------------------------------------
-fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
+parser = argparse.ArgumentParser(description="Run a miner.")
+parser.add_argument(
+    "--fullnode",
+    type=str,
+    default="http://node1:8801",
+    help="Full node URL (default: http://node1:8801)",
+)
+args = parser.parse_args()
+fullnode = Web3(Web3.HTTPProvider(args.fullnode))
 
 # Helper functions -----------------------------------------------------------
 
@@ -58,11 +68,11 @@ def mine_forever(interval_sec: int, threads: int) -> None:
         fullnode.geth.miner.start(threads)
 
         # Wait until a new block appears
-        count = 0
+        # count = 0
         interval = 0.5
         while fullnode.eth.blockNumber == current_block:
             # print(f"debug: )
-            count += 1
+            # count += 1
             # print(f"debug: [{count}/{interval_sec/interval}] waiting for new block.../ hashrate: {fullnode.eth.hashrate}, eth.mining: {fullnode.eth.mining}")
             time.sleep(interval)
             pass
@@ -90,13 +100,12 @@ def intToAddr(num):
 def send_dummy_transaction() -> None:
     """Send dummy transaction to the network."""
     # dummy transaction to send 1 wei to the random address between 0 and 100
-    import random as rand
     to = rand.randint(1, 10)
-    to = intToAddr(to)
+    to_addr = intToAddr(to)
     while True:
         try:
             fullnode.eth.sendTransaction(
-                {'to': to, 'from': fullnode.eth.coinbase, 'value': '1', 'gas': '21000', 'data': ""})
+                {'to': to_addr, 'from': fullnode.eth.coinbase, 'value': '1', 'gas': '21000', 'data': ""})
             break
         except:
             time.sleep(1)
@@ -119,6 +128,6 @@ if __name__ == "__main__":
             f"using {THREAD_COUNT} thread(s)…"
         )
         
-        mine_forever(BLOCK_INTERVAL, THREAD_COUNT)
+        mine_forever( BLOCK_INTERVAL, THREAD_COUNT)
     except KeyboardInterrupt:
         print("\nInterrupted by user; exiting.")

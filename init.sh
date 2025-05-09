@@ -145,7 +145,24 @@ EOF
     echo "Node $i started, logs at $(pwd)/data/node$i/geth.log"
 done
 
-
-
 cd ..
-python3 src/run_miner.py
+
+
+# Build the miner script image if it doesn't exist
+if ! docker image inspect miner-script:latest &> /dev/null; then
+    echo "Building miner-script image..."
+    docker build -t miner-script -f src/Dockerfile.miner src/
+else
+    echo "miner-script image already exists."
+fi
+
+NODE1_IP="10.10.10.11"
+NODE1_RPC_PORT="8801"
+# Run the miner script in a new Docker container
+echo "Starting miner script in a Docker container..."
+docker run -d --name miner_script_container \
+    --network eth_private_network \
+    miner-script \
+    --fullnode "http://${NODE1_IP}:${NODE1_RPC_PORT}"
+
+echo "Miner script container started."
