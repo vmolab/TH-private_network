@@ -4,11 +4,6 @@
 # random chain id
 CHAIN_ID=81231
 
-# random account which initially holds 100,000,000,000 ether
-# MASTER_ADDRESS=0xD04136b9F4984a0e8Ffd682d22f1a29A03F19c41
-# MASTER_PRIVATE_KEY=0xfb559405a8d302f7c9e12877fb73277cb0616548935082e91436127e30d73035
-COIN_BASE=0xc4422d1C18E9Ead8A9bB98Eb0d8bB9dbdf2811D7
-
 mkdir -p eth_private_network
 cd eth_private_network
 
@@ -24,43 +19,12 @@ do
     mkdir -p data/node$i/geth
 done
 
-# londonBlock for EIP-1559
-cat > genesis.json <<EOF
-{ 
-  "nonce": "0x0000000000000042",
-  "config": {
-    "chainId": $CHAIN_ID,
-    "homesteadBlock": 0,
-    "eip150Block": 0,
-    "eip155Block": 0,
-    "eip158Block": 0,
-    "byzantiumBlock": 0,
-    "constantinopleBlock": 0,
-    "petersburgBlock": 0,
-    "istanbulBlock": 0,
-    "muirGlacierBlock": 0,
-    "berlinBlock": 0,
-    "londonBlock": 0,
-    "ethash": {}
-  },
-  "difficulty": "1",
-  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "extraData": "",
-  "gasLimit": "21000000",
-  "gasLimit": "0xffffffff",
-  "alloc": {
-    "$COIN_BASE": {
-      "balance": "1000000000000000000000000000"
-    }
-  }
-}
-EOF
 
-# password to create the account and unlock it
-cat > password.txt <<EOF
-1234
-1234
-EOF
+# copy the password file and genesis.json from the current directory to the data directory
+cp -r ../keystore .
+cp ../genesis.json .
+
+
 
 # clone go-ethereum repo
 if [ -d go-ethereum ]; then
@@ -92,30 +56,22 @@ fi
 
 for i in $(seq 1 $1)
 do
-    # account creation
-    docker run --rm --name node$i \
-        -v $(pwd)/data/node$i:/root/.ethereum \
-        -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
-        geth:impt \
-        account new \
-        --password /root/password.txt \
-        --datadir /root/.ethereum > /dev/null 2>&1
 
-    # init the node with the genesis block
+
     docker run --rm --name node$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
+        -v $(pwd)/keystore:/root/keystore \
         geth:impt \
-        init --datadir /root/.ethereum \
-        "/root/genesis.json" > /dev/null 2>&1
+        --datadir /root/.ethereum \
+        init "/root/genesis.json" > /dev/null 2>&1
+
 
     # fetch the enode address of each node
     docker run --rm --name node$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
+        -v $(pwd)/keystore:/root/keystore \
         geth:impt \
         --verbosity 0 \
         console --exec admin.nodeInfo.enode | awk -F "@" '{printf $1}' > data/node$i/enode.txt
@@ -157,32 +113,39 @@ EOF
     #   JSON-RPC Server:    545$i
     #   WebSocket Server:   546$i
     #
-    docker run -d --name node$i \
+
+    docker run -d  --name node$i \
         --network eth_private_network \
         --ip 10.10.10.1$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
+        -v $(pwd)/keystore:/root/keystore \
         -p 3030$i:30303 \
         -p 551$i:8551 \
         -p 880$i:880$i \
         -p 546$i:8546 \
         geth:impt \
+        --datadir /root/.ethereum \
         --syncmode full \
         --networkid $CHAIN_ID \
-        --nodiscover \
         --mine \
         --miner.threads 1 \
+        --ws \
+        --wsaddr 0.0.0.0 \
+        --wsorigins "*" \
+        --keystore /root/keystore --gcmode archive \
         --rpc \
         --rpccorsdomain "*" \
         --rpcport 880$i \
         --rpcaddr 0.0.0.0 \
+        --nodiscover\
         --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" \
-        --ws \
-        --wsaddr 0.0.0.0 \
-        --wsorigins "*" \
         --allow-insecure-unlock \
-        --impt \
-        > /dev/null 2>&1
-    echo "Node $i started"
+        > $(pwd)/data/node$i/geth.log 2>&1 # 로그를 파일로 리디렉션
+    echo "Node $i started, logs at $(pwd)/data/node$i/geth.log"
 done
+
+
+
+cd ..
+python3 src/run_miner.py
