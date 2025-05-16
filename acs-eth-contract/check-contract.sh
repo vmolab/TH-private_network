@@ -1,3 +1,4 @@
+#!/bin/bash
 #export PRIVATE_KEY=$(openssl rand -hex 32)
 #export GREETER_ADDR=$(openssl rand -hex 16)
 
