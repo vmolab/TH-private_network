@@ -1,3 +1,7 @@
 eth_private_network
 reset.sh
 keystore
+
+acs-eth-contract/go.mod
+acs-eth-contract/go.sum
+acs-eth-contract/contracts
