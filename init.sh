@@ -135,12 +135,14 @@ EOF
         --wsorigins "*" \
         --keystore /root/keystore --gcmode archive \
         --rpc \
-        --rpccorsdomain "*" \
+        --rpccorsdomain "procyon.snu.ac.kr" \
+        --rpcvhosts "procyon.snu.ac.kr,localhost" \
         --rpcport 880$i \
         --rpcaddr 0.0.0.0 \
         --nodiscover\
         --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" \
         --allow-insecure-unlock \
+        --fakeimpt \
         > $(pwd)/data/node$i/geth.log 2>&1 # 로그를 파일로 리디렉션
     echo "Node $i started, logs at $(pwd)/data/node$i/geth.log"
 done
