@@ -40,12 +40,30 @@ func main() {
 		"value": hexValue,
 	}
 
+	blocknumber_before, err := getBlockNumber(rpcURL)
+	if err != nil {
+		panic(err)
+	}
+
 	// 3) 트랜잭션 전송
 	txHash, err := sendTransaction(rpcURL, tx)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Transaction sent. Hash =", txHash)
+	// 4) 트랜잭션이 블록에 포함될 때까지 대기
+
+	for {
+		blocknumber, err := getBlockNumber(rpcURL)
+		if err != nil {
+			panic(err)
+		}
+
+		if blocknumber > blocknumber_before {
+			fmt.Println("Transaction included in block number:", blocknumber)
+			break
+		}
+	}
 }
 
 func unlockAccount(rpcURL, account, password string) error {
@@ -101,4 +119,34 @@ func callRPC(rpcURL string, request RPCRequest, result interface{}) error {
 		return fmt.Errorf("failed to parse response: %v\nraw: %s", err, string(body))
 	}
 	return nil
+}
+
+func getBlockNumber(rpcURL string) (int, error) {
+
+	// 현재 블록넘버 조회
+	req := RPCRequest{
+		JSONRPC: "2.0",
+		Method:  "eth_blockNumber",
+		Params:  []interface{}{},
+		ID:      3,
+	}
+	var res struct {
+		Result string          `json:"result"`
+		Error  json.RawMessage `json:"error"`
+	}
+	if err := callRPC(rpcURL, req, &res); err != nil {
+		panic(err)
+	}
+	if len(res.Error) != 0 {
+		panic(fmt.Errorf("eth_blockNumber error: %s", res.Error))
+	}
+	blocknumber := res.Result
+
+	n := new(big.Int)
+	n, ok := n.SetString(blocknumber[2:], 16)
+	if !ok {
+		return 0, fmt.Errorf("failed to parse block number: %s", blocknumber)
+	}
+	return int(n.Int64()), nil
+
 }
