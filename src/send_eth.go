@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"time"
 )
 
 type RPCRequest struct {
@@ -63,6 +64,7 @@ func main() {
 			fmt.Println("Transaction included in block number:", blocknumber)
 			break
 		}
+		time.Sleep(1)
 	}
 }
 

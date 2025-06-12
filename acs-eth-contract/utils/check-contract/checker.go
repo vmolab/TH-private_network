@@ -33,6 +33,7 @@ func main() {
 	// 3) Prepare the signer with user's private key
 	key, _ := crypto.HexToECDSA(privKeyHex)
 	signer, _ := bind.NewKeyedTransactorWithChainID(key, chainID)
+	signer.GasLimit = 5000000 // Set gas limit for the transaction
 
 	// 4) Check if the account is unlocked and has enough balance to deploy the contract
 	balance, err := client.BalanceAt(context.Background(), signer.From, nil)
@@ -106,8 +107,13 @@ func main() {
 	fmt.Println("    ✅ Receipt's BlockNumber:", receipt.BlockNumber)
 
 	// 10. Try a read transaction for the written data
-	_data, _ := contracts.GetData(&bind.CallOpts{}, "exampleCid")
-	fmt.Println("GetDataInfo():", _data)
+	_data, err := contracts.GetData(&bind.CallOpts{}, dataCid)
+	fmt.Println("GetData()/ dataCid:", dataCid)
+	if err != nil {
+		fmt.Printf("GetData() failed: %v\n", err)
+	} else {
+		fmt.Println("GetDataInfo():", _data)
+	}
 	fmt.Println("==============================================================")
 
 	// 11. Try a write transaction using UpdateData()
@@ -126,9 +132,9 @@ func main() {
 		return
 	}
 	fmt.Println("    ✅ Receipt's BlockNumber:", receipt3.BlockNumber)
-
+	return
 	// 13. Try a read transaction for the written data
-	_dataU, _ := contracts.GetData(&bind.CallOpts{}, "exampleCid")
+	_dataU, err := contracts.GetData(&bind.CallOpts{}, dataCid)
 	if err != nil {
 		fmt.Printf("GetData() failed: %v\n", err)
 	} else {
@@ -153,7 +159,7 @@ func main() {
 	fmt.Println("    ✅ Receipt's BlockNumber:", receipt2.BlockNumber)
 
 	// 16. Try a read transaction for the deleted data
-	_dataD, err := contracts.GetData(&bind.CallOpts{}, "exampleCid")
+	_dataD, err := contracts.GetData(&bind.CallOpts{}, dataCid)
 	if err != nil {
 		fmt.Printf("✅ GetData() failed: %v\n", err)
 	} else {

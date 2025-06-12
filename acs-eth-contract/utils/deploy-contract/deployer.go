@@ -37,6 +37,7 @@ func main() {
 	// 3) Prepare the signer with user's private key
 	key, _ := crypto.HexToECDSA(privKeyHex)
 	signer, _ := bind.NewKeyedTransactorWithChainID(key, chainID)
+	signer.GasLimit = 5000000 // Set gas limit for the transaction
 
 	// 4) Check if the account is unlocked and has enough balance to deploy the contract
 	balance, err := client.BalanceAt(context.Background(), signer.From, nil)

@@ -26,13 +26,13 @@ cp ../genesis.json .
 
 
 
-# clone go-ethereum repo
-if [ -d go-ethereum ]; then
-    echo "go-ethereum directory already exists, skipping clone"
-else
-    git clone https://github.com/3e91b5/impt_go-ethereum.git go-ethereum
-fi
-
+# # clone go-ethereum repo
+# if [ -d go-ethereum ]; then
+#     echo "go-ethereum directory already exists, skipping clone"
+# else
+#     git clone https://github.com/3e91b5/impt_go-ethereum.git go-ethereum
+# fi
+cp -r /home/jhkim/go/src/github.com/3e91b5/impt_go-ethereum go-ethereum
 cd go-ethereum
 
 # git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
@@ -141,7 +141,7 @@ EOF
         --rpcport 880$i \
         --rpcaddr 0.0.0.0 \
         --nodiscover\
-        --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" \
+        --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3,trace" \
         --allow-insecure-unlock \
         --fakeimpt \
         > $(pwd)/data/node$i/geth.log 2>&1 # 로그를 파일로 리디렉션
