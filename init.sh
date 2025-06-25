@@ -4,9 +4,9 @@
 CHAIN_ID=81231
 
 # random account which initially holds 100,000,000,000 ether
-MASTER_ADDRESS=0xD04136b9F4984a0e8Ffd682d22f1a29A03F19c41
+# MASTER_ADDRESS=0xD04136b9F4984a0e8Ffd682d22f1a29A03F19c41
+MASTER_ADDRESS=0xc4422d1C18E9Ead8A9bB98Eb0d8bB9dbdf2811D7
 MASTER_PRIVATE_KEY=0xfb559405a8d302f7c9e12877fb73277cb0616548935082e91436127e30d73035
-
 mkdir -p eth_private_network
 cd eth_private_network
 
@@ -51,10 +51,16 @@ cat > genesis.json <<EOF
 EOF
 
 # password to create the account and unlock it
+# cat > password.txt <<EOF
+# 1234567890
+# 1234567890
+# EOF
 cat > password.txt <<EOF
-1234567890
-1234567890
+1234
+1234
 EOF
+
+
 
 # clone go-ethereum repo
 if [ -d go-ethereum ]; then
@@ -74,7 +80,14 @@ if [ $(docker images -q geth:1.10.26 2> /dev/null) ]; then
     echo "Image already exists, skipping build"
 else
     echo "Building geth image"
-    docker build . -t geth:1.10.26
+    # 빌드 캐시·멀티플랫폼을 쓸 수 있는 buildx 권장
+    GOPROXY_LIST="https://goproxy.io,https://goproxy.cn,direct"
+    GOSUMDB_SERVER="sum.golang.google.cn"
+
+    docker buildx build --network=host \
+    --build-arg GOPROXY="$GOPROXY_LIST" \
+    --build-arg GOSUMDB="$GOSUMDB_SERVER" \
+    -t geth:1.10.26 .
 fi
 
 cd ..
@@ -88,15 +101,34 @@ fi
 
 for i in $(seq 1 $1)
 do
-    # account creation
+    # account creation - 마스터 계정을 각 노드에 임포트
+    echo $MASTER_PRIVATE_KEY > data/node$i/master_key.txt
+
+    # 마스터 계정을 keystore로 임포트
     docker run --rm --name node$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
         -v $(pwd)/password.txt:/root/password.txt \
         geth:1.10.26 \
-        account new \
+        account import \
         --password /root/password.txt \
-        --datadir /root/.ethereum > /dev/null 2>&1
+        --datadir /root/.ethereum \
+        /root/.ethereum/master_key.txt
+
+    # 보안을 위해 개인키 파일 삭제
+    rm data/node$i/master_key.txt
+
+
+
+    # # account creation
+    # docker run --rm --name node$i \
+    #     -v $(pwd)/data/node$i:/root/.ethereum \
+    #     -v $(pwd)/genesis.json:/root/genesis.json \
+    #     -v $(pwd)/password.txt:/root/password.txt \
+    #     geth:1.10.26 \
+    #     account new \
+    #     --password /root/password.txt \
+    #     --datadir /root/.ethereum > /dev/null 2>&1
 
     # init the node with the genesis block
     docker run --rm --name node$i \
@@ -118,6 +150,9 @@ do
         echo -n "@10.10.10.1${i}:30303\"" >> data/node$i/enode.txt
 done
 
+
+
+
 for i in $(seq 1 $1)
 do
     # create the static-nodes.json file for each node
@@ -125,7 +160,7 @@ do
     cat > data/node$i/static-nodes.json <<EOF
 [
 EOF
-
+    
     COUNT=0
     for j in $(seq 1 $1)
     do
@@ -169,12 +204,16 @@ EOF
         --nodiscover \
         --mine \
         --miner.threads 1 \
+        --miner.etherbase $MASTER_ADDRESS \
+        --password /root/password.txt \
         --http \
         --http.addr 0.0.0.0 \
         --http.vhosts "*" \
+        --http.api "eth,net,web3,personal,miner,admin" \
         --ws \
         --ws.addr 0.0.0.0 \
         --ws.origins "*" \
+        --allow-insecure-unlock \
         > /dev/null 2>&1
     echo "Node $i started"
 done
