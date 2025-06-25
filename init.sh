@@ -1,3 +1,4 @@
+#!/bin/bash
 # init.sh
 
 # random chain id
@@ -66,17 +67,15 @@ EOF
 if [ -d go-ethereum ]; then
     echo "go-ethereum directory already exists, skipping clone"
 else
-    git clone https://github.com/ethereum/go-ethereum.git
+    git clone https://github.com/3e91b5/impt_go-ethereum.git go-ethereum
 fi
 
 cd go-ethereum
 
-# 1.10.26 (before the PoW to PoS transition)
-# TODO: adopting Trie-Hashimoto
-git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
+# git reset --hard e5eb32acee19cc9fca6a03b10283b7484246b15a
 
 # using Dockerfile in the go-ethereum repo
-if [ $(docker images -q geth:1.10.26 2> /dev/null) ]; then
+if [ $(docker images -q geth:impt 2> /dev/null) ]; then
     echo "Image already exists, skipping build"
 else
     echo "Building geth image"
@@ -143,8 +142,8 @@ do
     docker run --rm --name node$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
-        geth:1.10.26 \
+        -v $(pwd)/keystore:/root/keystore \
+        geth:impt \
         --verbosity 0 \
         console --exec admin.nodeInfo.enode | awk -F "@" '{printf $1}' > data/node$i/enode.txt
         echo -n "@10.10.10.1${i}:30303\"" >> data/node$i/enode.txt
@@ -165,7 +164,7 @@ EOF
     for j in $(seq 1 $1)
     do
         # skip the current node
-        if [[ $i != $j ]]; then
+        if [[ $i -ne $j ]]; then
             COUNT=$((COUNT + 1))
             ENODE=$(cat data/node$j/enode.txt)
 
@@ -188,20 +187,21 @@ EOF
     #   JSON-RPC Server:    545$i
     #   WebSocket Server:   546$i
     #
-    docker run -d --name node$i \
+
+    docker run -d  --name node$i \
         --network eth_private_network \
         --ip 10.10.10.1$i \
         -v $(pwd)/data/node$i:/root/.ethereum \
         -v $(pwd)/genesis.json:/root/genesis.json \
-        -v $(pwd)/password.txt:/root/password.txt \
+        -v $(pwd)/keystore:/root/keystore \
         -p 3030$i:30303 \
         -p 551$i:8551 \
-        -p 545$i:8545 \
+        -p 880$i:880$i \
         -p 546$i:8546 \
-        geth:1.10.26 \
+        geth:impt \
+        --datadir /root/.ethereum \
         --syncmode full \
         --networkid $CHAIN_ID \
-        --nodiscover \
         --mine \
         --miner.threads 1 \
         --miner.etherbase $MASTER_ADDRESS \
@@ -217,3 +217,25 @@ EOF
         > /dev/null 2>&1
     echo "Node $i started"
 done
+
+cd ..
+
+
+# Build the miner script image if it doesn't exist
+if ! docker image inspect miner-script:latest &> /dev/null; then
+    echo "Building miner-script image..."
+    docker build -t miner-script -f src/Dockerfile.miner src/
+else
+    echo "miner-script image already exists."
+fi
+
+NODE1_IP="10.10.10.11"
+NODE1_RPC_PORT="8801"
+# Run the miner script in a new Docker container
+echo "Starting miner script in a Docker container..."
+docker run -d --name miner_script_container \
+    --network eth_private_network \
+    miner-script \
+    --fullnode "http://${NODE1_IP}:${NODE1_RPC_PORT}"
+
+echo "Miner script container started."

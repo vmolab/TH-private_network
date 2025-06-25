@@ -1,0 +1,15 @@
+# Base Python image
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install web3.py
+RUN pip install web3==5.31.3
+
+# Copy the miner script into the container
+COPY run_miner.py .
+
+# Command to run the script
+# CMD ["python3", "run_miner.py"]
+ENTRYPOINT ["python3", "run_miner.py"]
